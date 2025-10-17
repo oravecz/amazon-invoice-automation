@@ -1,0 +1,51 @@
+# Agent-OS Verifiers Configuration
+# Defines specialized verification agents for different types of implementations
+
+verifiers:
+  - id: backend-verifier
+    name: Backend Verifier
+    description: Verifies backend code, Node.js modules, file operations, and server-side logic
+    verification_scope:
+      - Node.js module implementations
+      - Configuration management
+      - File system operations
+      - Error handling
+      - Module exports and interfaces
+    verification_methods:
+      - Run unit tests
+      - Check module integration
+      - Verify error handling
+      - Test file operations
+      - Validate configuration loading
+
+  - id: frontend-verifier
+    name: Frontend Verifier
+    description: Verifies browser automation, UI interaction, and Playwright implementations
+    verification_scope:
+      - Playwright automation code
+      - Web element selectors
+      - Authentication flows
+      - Download handling
+      - Wait strategies
+    verification_methods:
+      - Run Playwright tests
+      - Verify selector stability
+      - Test authentication flows
+      - Validate download mechanisms
+      - Check timeout configurations
+
+  - id: implementation-verifier
+    name: Implementation Verifier
+    description: Performs end-to-end verification of complete implementations
+    verification_scope:
+      - Complete feature implementations
+      - Integration between modules
+      - End-to-end workflows
+      - Error handling and recovery
+      - Documentation completeness
+    verification_methods:
+      - Run all tests (unit + integration)
+      - Perform manual testing
+      - Verify task completion in tasks.md
+      - Check documentation accuracy
+      - Validate success criteria from spec

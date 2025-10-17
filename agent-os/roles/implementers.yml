@@ -1,0 +1,66 @@
+# Agent-OS Implementers Configuration
+# Defines specialized agents for different implementation tasks
+
+implementers:
+  - id: devops-engineer
+    name: DevOps/Infrastructure Engineer
+    description: Handles project setup, configuration, dependencies, git hooks, and CI/CD setup
+    specialties:
+      - Project initialization and structure
+      - Package management and dependencies
+      - Git configuration and hooks
+      - Build scripts and automation
+    verified_by: [backend-verifier]
+
+  - id: backend-engineer
+    name: Backend/Node.js Engineer
+    description: Implements core Node.js modules, business logic, and server-side functionality
+    specialties:
+      - Node.js development
+      - Module design and implementation
+      - Configuration management
+      - File system operations
+      - Logging and reporting
+    verified_by: [backend-verifier]
+
+  - id: automation-engineer
+    name: Automation/QA Engineer (Playwright specialist)
+    description: Implements browser automation, web scraping, and Playwright-based workflows
+    specialties:
+      - Playwright browser automation
+      - Web element selection and interaction
+      - Authentication flows
+      - Download handling
+      - Wait strategies and timing
+    verified_by: [frontend-verifier, backend-verifier]
+
+  - id: integration-engineer
+    name: Full-Stack/Integration Engineer
+    description: Integrates multiple modules, implements main application flow, and handles orchestration
+    specialties:
+      - Module integration
+      - Application orchestration
+      - Error handling and recovery
+      - Process lifecycle management
+      - Signal handling and cleanup
+    verified_by: [implementation-verifier]
+
+  - id: testing-engineer
+    name: QA/Testing Engineer
+    description: Writes tests, performs manual verification, and ensures quality standards
+    specialties:
+      - Test design and implementation
+      - Manual testing and verification
+      - Test coverage analysis
+      - Bug identification and documentation
+    verified_by: [implementation-verifier]
+
+  - id: documentation-engineer
+    name: Technical Writer/DevOps Engineer
+    description: Creates documentation, README files, and prepares project for deployment
+    specialties:
+      - Technical documentation
+      - User guides and tutorials
+      - Code comments and JSDoc
+      - Installation and setup instructions
+    verified_by: [implementation-verifier]
