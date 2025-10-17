@@ -1,0 +1,141 @@
+/**
+ * Tests for Configuration & CLI Module (lib/config.js)
+ *
+ * Following minimal testing approach - only testing critical behaviors:
+ * 1. CLI argument parsing (--from, --to, --debug)
+ * 2. Default date range (current year)
+ * 3. Environment variable loading
+ */
+
+const { test, expect } = require('@playwright/test');
+const path = require('path');
+const fs = require('fs');
+
+// Test 1: CLI argument parsing with flags
+test('should parse CLI arguments correctly', async () => {
+  // Save original process.argv
+  const originalArgv = process.argv;
+
+  // Mock CLI arguments
+  process.argv = [
+    'node',
+    'index.js',
+    '--from', '2025-01-01',
+    '--to', '2025-06-30',
+    '--debug'
+  ];
+
+  // Mock environment variables
+  process.env.AMAZON_EMAIL = 'test@example.com';
+  process.env.AMAZON_PASSWORD = 'test-password';
+
+  // Clear require cache to reload module with new args
+  delete require.cache[require.resolve('../lib/config.js')];
+
+  const config = require('../lib/config.js');
+
+  expect(config.email).toBe('test@example.com');
+  expect(config.password).toBe('test-password');
+  expect(config.from).toBe('2025-01-01');
+  expect(config.to).toBe('2025-06-30');
+  expect(config.debug).toBe(true);
+  expect(config.headless).toBe(false);
+
+  // Restore original process.argv
+  process.argv = originalArgv;
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+});
+
+// Test 2: Default date range (current year)
+test('should use current year as default date range', async () => {
+  // Save original process.argv
+  const originalArgv = process.argv;
+
+  // Mock CLI arguments without dates
+  process.argv = ['node', 'index.js'];
+
+  // Mock environment variables
+  process.env.AMAZON_EMAIL = 'test@example.com';
+  process.env.AMAZON_PASSWORD = 'test-password';
+
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/config.js')];
+
+  const config = require('../lib/config.js');
+
+  const currentYear = new Date().getFullYear();
+  expect(config.from).toBe(`${currentYear}-01-01`);
+  expect(config.to).toBe(`${currentYear}-12-31`);
+
+  // Restore
+  process.argv = originalArgv;
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+});
+
+// Test 3: Environment variable loading from .env file
+test('should load environment variables from .env file', async () => {
+  // Create temporary .env file
+  const envPath = path.join(__dirname, '..', '.env.test');
+  const envContent = 'AMAZON_EMAIL=envfile@example.com\nAMAZON_PASSWORD=envfile-password';
+  fs.writeFileSync(envPath, envContent);
+
+  // Save original process.argv and env
+  const originalArgv = process.argv;
+  const originalEmail = process.env.AMAZON_EMAIL;
+  const originalPassword = process.env.AMAZON_PASSWORD;
+
+  // Clear env vars
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+
+  // Mock CLI arguments
+  process.argv = ['node', 'index.js'];
+
+  // Clear require cache and reload with dotenv pointing to test file
+  delete require.cache[require.resolve('../lib/config.js')];
+  delete require.cache[require.resolve('dotenv')];
+
+  // Load dotenv with test file
+  require('dotenv').config({ path: envPath });
+
+  const config = require('../lib/config.js');
+
+  expect(config.email).toBe('envfile@example.com');
+  expect(config.password).toBe('envfile-password');
+
+  // Cleanup
+  fs.unlinkSync(envPath);
+  process.argv = originalArgv;
+  if (originalEmail) process.env.AMAZON_EMAIL = originalEmail;
+  else delete process.env.AMAZON_EMAIL;
+  if (originalPassword) process.env.AMAZON_PASSWORD = originalPassword;
+  else delete process.env.AMAZON_PASSWORD;
+});
+
+// Test 4: Headless mode defaults to true without debug flag
+test('should set headless to true when debug flag not provided', async () => {
+  // Save original process.argv
+  const originalArgv = process.argv;
+
+  // Mock CLI arguments without debug flag
+  process.argv = ['node', 'index.js'];
+
+  // Mock environment variables
+  process.env.AMAZON_EMAIL = 'test@example.com';
+  process.env.AMAZON_PASSWORD = 'test-password';
+
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/config.js')];
+
+  const config = require('../lib/config.js');
+
+  expect(config.debug).toBe(false);
+  expect(config.headless).toBe(true);
+
+  // Restore
+  process.argv = originalArgv;
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+});

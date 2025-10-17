@@ -1,0 +1,43 @@
+# Task Assignments for Amazon Invoice Automation
+# Maps task groups to specialized implementer agents
+
+task_assignments:
+  - task_group: "Task Group 1: Project Setup & Configuration"
+    assigned_subagent: "devops-engineer"
+    rationale: "DevOps engineer specializes in project initialization, dependencies, git hooks, and infrastructure setup"
+
+  - task_group: "Task Group 2: Configuration & CLI Module"
+    assigned_subagent: "backend-engineer"
+    rationale: "Backend engineer handles Node.js modules, configuration management, and CLI parsing"
+
+  - task_group: "Task Group 3: File System Module"
+    assigned_subagent: "backend-engineer"
+    rationale: "Backend engineer specializes in file system operations and Node.js module implementations"
+
+  - task_group: "Task Group 4: Reporter Module"
+    assigned_subagent: "backend-engineer"
+    rationale: "Backend engineer handles logging, reporting, and file generation"
+
+  - task_group: "Task Group 5: Authentication Module"
+    assigned_subagent: "automation-engineer"
+    rationale: "Automation engineer specializes in Playwright, browser automation, and authentication flows"
+
+  - task_group: "Task Group 6: Order Navigation Module"
+    assigned_subagent: "automation-engineer"
+    rationale: "Automation engineer handles web scraping, element selection, and page navigation"
+
+  - task_group: "Task Group 7: Invoice Download Module"
+    assigned_subagent: "automation-engineer"
+    rationale: "Automation engineer specializes in download handling and Playwright automation"
+
+  - task_group: "Task Group 8: Main CLI Application"
+    assigned_subagent: "integration-engineer"
+    rationale: "Integration engineer specializes in orchestrating modules, error handling, and process lifecycle"
+
+  - task_group: "Task Group 9: Integration Testing & Manual Verification"
+    assigned_subagent: "testing-engineer"
+    rationale: "Testing engineer handles test coverage analysis, integration testing, and manual verification"
+
+  - task_group: "Task Group 10: Documentation & Final Polish"
+    assigned_subagent: "documentation-engineer"
+    rationale: "Documentation engineer creates README files, user guides, and technical documentation"
