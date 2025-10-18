@@ -5,6 +5,98 @@ All notable changes to the Amazon Invoice Automation project will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-17
+
+### Added
+
+#### Manual Authentication Feature
+
+A new `--manual-auth` CLI parameter that enables manual authentication mode, allowing users to manually enter their Amazon credentials in a visible browser window instead of using automated login.
+
+**New CLI Parameter:**
+- `--manual-auth` / `-m`: Use manual authentication instead of automated login
+
+**What Changed:**
+
+**lib/config.js:**
+- Added `--manual-auth` CLI parameter with alias `-m`
+- Modified credential validation to skip email/password checks when `manualAuth` is true
+- Updated headless mode logic to automatically force headed mode when manual auth is enabled
+- Added `manualAuth` flag to exported config object
+- Updated error messages to suggest using `--manual-auth` when credentials are missing
+
+**lib/auth.js:**
+- Added new `manualLogin(page)` function for manual authentication workflow
+- Comprehensive JSDoc documentation with polling configuration details
+- Navigates to Amazon.com home page and waits for user to authenticate manually
+- Polls every 3 seconds to detect when authentication is complete
+- 10-minute timeout for authentication completion
+- Clear console instructions displayed to guide users through manual login process
+- Reuses existing `verifyAuthentication()` function for logged-in state detection
+- Exported `manualLogin` alongside existing authentication functions
+
+**lib/reporter.js:**
+- Updated `logStartup()` function to display authentication mode (MANUAL vs AUTOMATED)
+- Modified startup message to show browser mode context (manual authentication, debug, or headless)
+- Conditionally hide credentials message when manual auth is enabled
+- Enhanced browser mode message with contextual information
+
+**index.js:**
+- Added conditional authentication flow based on `config.manualAuth` flag
+- When manual auth enabled: calls `auth.manualLogin(page)`
+- When manual auth disabled: uses existing automated `auth.login()` flow
+- 2FA detection and waiting only happens in automated mode
+- Both authentication modes use shared `verifyAuthentication()` check
+- Added console message "Manual authentication mode enabled" for clarity
+
+**Behavioral Changes:**
+- Credentials in `.env` file are now optional when using `--manual-auth`
+- Manual authentication automatically enables headed (visible) browser mode
+- Debug flag is effectively redundant with manual auth (both enable headed mode)
+- Authentication timeout is 10 minutes for manual auth vs 5 minutes for automated 2FA
+
+**Usage Examples:**
+```bash
+# Manual authentication with default date range
+node index.js --manual-auth
+
+# Manual authentication with custom date range
+node index.js --manual-auth --from 2025-01-01 --to 2025-06-30
+
+# Manual authentication (short form)
+node index.js -m
+```
+
+**Benefits:**
+- Users can avoid storing credentials in `.env` file for enhanced security
+- Bypasses automated login failures and CAPTCHA challenges
+- Provides full visibility into the authentication process
+- Useful for debugging authentication issues
+- Works with all 2FA methods since user completes authentication manually
+
+**Testing:**
+- 19 comprehensive automated tests covering manual authentication feature
+- Unit tests for configuration parsing, manual login flow, and reporter updates
+- Integration tests for authentication flow switching and error handling
+- Edge case tests for timeouts, already-authenticated sessions, and polling logic
+
+**Documentation:**
+- Comprehensive README.md section explaining manual authentication
+- Usage examples and troubleshooting tips
+- Updated CLI help text
+- Enhanced JSDoc comments with polling configuration details
+- Inline code comments explaining timeout rationale
+
+### Files Modified
+- `lib/config.js` - CLI parameter and configuration logic
+- `lib/auth.js` - Manual authentication workflow
+- `lib/reporter.js` - Startup message enhancements
+- `index.js` - Authentication flow integration
+- `README.md` - User documentation and examples
+- `CHANGELOG.md` - This file
+- `.env.example` - Added manual auth note
+- Test files for all modified modules
+
 ## [1.0.0] - 2025-10-17
 
 ### Initial Release

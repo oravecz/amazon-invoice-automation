@@ -1,560 +1,554 @@
-# Specification: Amazon Invoice Automation
+# Specification: Manual Authentication CLI Parameter
 
 ## Goal
 
-Create a standalone Node.js CLI application that automates the download of Amazon order invoices using Playwright browser automation. The tool will authenticate users, filter orders by date range, download invoice PDFs organized by month, handle 2FA manually, skip existing files, and generate comprehensive progress reports.
+Add a `--manual-auth` CLI parameter to the Amazon Invoice Automation tool that bypasses automated login and instead allows users to manually authenticate in a visible browser window. This feature enables users who prefer manual authentication or encounter automated login issues to complete authentication themselves while still benefiting from automated invoice downloading.
 
 ## User Stories
 
-- As an Amazon customer, I want to automatically download all my invoice PDFs for tax purposes so that I don't have to manually click through each order
-- As a user, I want to specify a date range for invoices so that I can download only the invoices I need for a specific time period
-- As a user, I want the script to skip invoices I've already downloaded so that I don't waste time re-downloading files
-- As a user, I want clear console feedback during the download process so that I know the script is working and can see progress
-- As a user, I want a summary report after completion so that I can verify which invoices were downloaded and which were skipped
-- As a developer, I want to run the script in headed mode for debugging so that I can see what the browser is doing when issues occur
-- As a user, I want the script to handle 2FA gracefully so that I can complete authentication manually and let the script continue
+- As a user experiencing automated login failures, I want to manually authenticate to Amazon so that I can still use the automated invoice download functionality
+- As a user with complex 2FA requirements, I want to handle authentication manually in a visible browser so that I can complete all authentication steps myself
+- As a security-conscious user, I want the option to manually enter my credentials in a visible browser so that I can see exactly what's happening during authentication
+- As a developer debugging authentication issues, I want to manually authenticate in headed mode so that I can observe the authentication flow and troubleshoot problems
+- As a user, I want manual authentication mode to automatically show the browser so that I don't need to remember to also add the `--debug` flag
 
 ## Core Requirements
 
 ### Functional Requirements
 
-- Authenticate to Amazon.com using email and password credentials stored in environment variables
-- Navigate to Amazon's order history page for the specified date range
-- Iterate through all orders within the specified date range
-- For each order, check if an invoice is available and download it as a PDF
-- Organize downloaded invoices in month-based folders using the format `YYYY-MM/invoice-{order-number}.pdf`
-- Skip downloading invoices that already exist locally (no overwrites)
-- Skip orders that don't have invoices available (e.g., digital orders, marketplace orders)
-- Handle Amazon 2FA/CAPTCHA challenges by pausing indefinitely with clear console instructions
-- Provide real-time console logging showing login status, progress, downloads, and skips
-- Generate a `summary.txt` file containing order details (number, date, amount, products) and download status
-- Support CLI arguments: `--from <date>`, `--to <date>`, `--debug`
-- Default to current year date range if no dates provided
-- Continue processing remaining orders when individual orders fail
-- Close browser session properly on completion or interruption
+- Add a new CLI parameter `--manual-auth` that triggers manual authentication mode
+- When `--manual-auth` is set, automatically enable headed (visible) browser mode regardless of `--debug` flag status
+- Skip the automated login flow entirely when `--manual-auth` is enabled
+- Navigate to Amazon.com home page and pause for user to authenticate
+- Display clear console instructions explaining what the user needs to do
+- Poll the page to detect when the user has successfully authenticated
+- Once logged-in state is detected, continue with normal program execution (order navigation and invoice downloading)
+- Support combining `--manual-auth` with other CLI parameters (`--from`, `--to`)
+- Provide helpful error messages if authentication is not completed within a reasonable timeout
+- Log manual authentication mode status in console startup messages
 
 ### Non-Functional Requirements
 
-- Performance: Run in headless mode by default for faster execution; enable headed mode with `--debug` flag
-- Reliability: Implement robust selectors and wait strategies to handle Amazon's dynamic UI; retry transient network failures
-- Usability: Provide clear, actionable console output with progress indicators; generate human-readable summary reports
-- Security: Store credentials in `.env` file (gitignored); never log passwords or sensitive data
-- Maintainability: Use modular code structure with clear separation of concerns; document selectors and navigation flow
-- Error Handling: Log errors clearly; continue processing after failures; provide helpful error messages for common issues
+- User Experience: Provide crystal-clear console instructions so users know exactly what to do
+- Reliability: Robust logged-in state detection that works across Amazon's various authentication flows
+- Performance: Efficient polling mechanism that doesn't consume excessive resources while waiting
+- Maintainability: Modular implementation that cleanly separates manual authentication logic from existing automated login code
+- Security: Never bypass security checks - users complete full Amazon authentication themselves
+- Compatibility: Works seamlessly with existing date range and debug parameters
 
 ## Visual Design
 
-No visual assets provided. This is a command-line application with console-based output.
+No visual mockups provided. This is a CLI feature with enhanced console output.
 
 ### Console Output Design
 
-The CLI will provide structured console output:
+When `--manual-auth` is used:
 
 ```
+=================================================
 Starting Amazon Invoice Automation...
+=================================================
 Loaded credentials from .env
-Launching browser (headless mode)...
+Date range: 2025-01-01 to 2025-12-31
+Browser mode: headed (manual authentication)
+Authentication mode: MANUAL
+=================================================
+
+Launching browser (headed mode)...
 Navigating to Amazon.com...
-Logging in...
 
-2FA REQUIRED: Please complete the two-factor authentication in the browser
-Waiting for manual 2FA completion...
-(Press Ctrl+C to cancel)
+=================================================
+MANUAL AUTHENTICATION REQUIRED
+=================================================
+Please complete the following steps:
 
+1. The browser window is now open showing Amazon.com
+2. Click "Sign in" in the browser
+3. Enter your email and password manually
+4. Complete any 2FA/CAPTCHA challenges
+5. Wait for the Amazon home page to fully load
+6. Do NOT close the browser window
+
+The script will automatically detect when you're logged in
+and continue downloading invoices.
+
+Waiting for authentication... (Press Ctrl+C to cancel)
+=================================================
+
+Checking authentication status...
+Still waiting for authentication...
+Still waiting for authentication...
+Authentication detected!
 Login successful!
+
+Navigating to order history...
 Filtering orders from 2025-01-01 to 2025-12-31...
-Found 45 orders to process
-
-Processing order 1/45: #123-4567890-1234567
-  Date: 2025-01-15
-  Amount: $29.99
-  Product: Example Product Name
-  ✓ Downloaded: 2025-01/invoice-123-4567890-1234567.pdf
-
-Processing order 2/45: #123-4567890-1234568
-  Date: 2025-01-18
-  Amount: $49.99
-  Product: Another Product
-  ⊘ Skipped: Invoice already exists
-
-Processing order 3/45: #123-4567890-1234569
-  Date: 2025-02-03
-  Amount: $15.99
-  Product: Digital Item
-  ⊘ Skipped: No invoice available
-
-...
-
-Summary:
-- Total orders: 45
-- Successfully downloaded: 38
-- Skipped (already exist): 5
-- No invoice available: 2
-- Failed: 0
-
-Detailed report saved to: summary.txt
-Completed in 3m 42s
+[... rest of normal flow ...]
 ```
 
 ## Reusable Components
 
 ### Existing Code to Leverage
 
-No existing code patterns identified in the current codebase. This is a greenfield standalone automation script.
+**From `lib/auth.js`:**
+- `verifyAuthentication(page)`: Reuse existing authentication verification logic to detect logged-in state
+- `detect2FA(page)`: Can potentially reuse 2FA detection patterns for manual auth monitoring
+
+**From `lib/config.js`:**
+- CLI argument parsing infrastructure (yargs)
+- `headless` configuration flag logic to extend for manual auth mode
+
+**From `lib/reporter.js`:**
+- `logStartup(config)`: Extend to show manual authentication mode status
+- Console logging patterns for clear user instructions
+
+**From `index.js`:**
+- Browser launch configuration
+- Context creation with downloads enabled
+- Main application orchestration flow
 
 ### New Components Required
 
-All components must be created from scratch:
+**New Functions in `lib/auth.js`:**
+- `manualLogin(page)`: New function to handle manual authentication workflow
+  - Navigate to Amazon.com home page
+  - Display console instructions
+  - Poll for logged-in state
+  - Return when authentication detected
+- `logManualAuthInstructions()`: Display detailed instructions for manual authentication
 
-- **Authentication Module**: Handle Amazon login, credential management, and 2FA detection
-- **Order Navigation Module**: Navigate to order history, apply date filters, iterate through orders
-- **Invoice Download Module**: Detect invoice availability, check for existing files, download PDFs
-- **File System Module**: Create month-based directories, generate unique filenames, check file existence
-- **Reporting Module**: Track progress, generate console output, create summary.txt file
-- **CLI Argument Parser**: Parse and validate --from, --to, and --debug arguments
-- **Error Handler**: Centralized error handling, logging, and recovery logic
+**Configuration Changes in `lib/config.js`:**
+- Add `--manual-auth` CLI parameter using yargs
+- Add logic to force `headless: false` when `manualAuth: true`
+- Export `manualAuth` flag in config object
+
+**Reporter Enhancements in `lib/reporter.js`:**
+- Update `logStartup()` to show "manual" vs "automated" authentication mode
+- Add console messages for manual authentication waiting status
 
 ## Technical Approach
 
-### Technology Stack
+### CLI Parameter Configuration
 
-- **Runtime**: Node.js (v18 or higher recommended)
-- **Browser Automation**: Playwright (Chromium browser)
-- **Environment Variables**: dotenv package
-- **CLI Argument Parsing**: yargs or minimist
-- **File System**: Node.js built-in `fs/promises` and `path` modules
-- **Date Handling**: Native JavaScript Date object
-- **Logging**: Console with optional color coding (chalk library optional)
+**Configuration Module Changes (`lib/config.js`):**
 
-### Project Structure
-
-```
-amazon-invoice-automation/
-├── .env                    # Credentials (gitignored)
-├── .gitignore             # Exclude .env, node_modules, invoices/
-├── package.json           # Dependencies and scripts
-├── package-lock.json
-├── README.md              # Usage instructions
-├── index.js               # Main CLI entry point
-├── lib/                   # Core modules
-│   ├── auth.js           # Authentication logic
-│   ├── orders.js         # Order navigation and filtering
-│   ├── invoices.js       # Invoice download logic
-│   ├── filesystem.js     # File operations
-│   ├── reporter.js       # Logging and summary generation
-│   └── config.js         # Configuration and CLI parsing
-├── YYYY-MM/              # Invoice folders (created dynamically)
-│   └── invoice-*.pdf
-└── summary.txt           # Generated report
-```
-
-### Core Modules
-
-#### 1. Configuration Module (`lib/config.js`)
-
-Responsibilities:
-- Load environment variables from `.env` file
-- Parse CLI arguments (--from, --to, --debug)
-- Validate date ranges and set defaults (current year)
-- Export configuration object for use by other modules
-
-Key Functions:
-- `loadConfig()`: Load and validate all configuration
-- `validateDateRange(from, to)`: Ensure dates are valid and logical
-- `getDefaultDateRange()`: Return current year start/end dates
-
-#### 2. Authentication Module (`lib/auth.js`)
-
-Responsibilities:
-- Navigate to Amazon.com and initiate login
-- Fill in email and password from environment variables
-- Detect 2FA/CAPTCHA challenges
-- Display console instructions and wait indefinitely for manual intervention
-- Verify successful authentication
-
-Key Functions:
-- `login(page, email, password)`: Execute login flow
-- `detect2FA(page)`: Check for 2FA prompts
-- `waitFor2FA(page)`: Pause and wait for manual 2FA completion
-- `verifyAuthentication(page)`: Confirm login success
-
-Selectors Strategy:
-- Use stable selectors (IDs, name attributes, ARIA labels)
-- Implement fallback selectors for common Amazon UI variations
-- Document all selectors with comments explaining their purpose
-
-#### 3. Order Navigation Module (`lib/orders.js`)
-
-Responsibilities:
-- Navigate to Amazon order history page
-- Apply date range filters to display only relevant orders
-- Iterate through paginated order listings
-- Extract order metadata (order number, date, amount, product names)
-
-Key Functions:
-- `navigateToOrders(page)`: Go to order history page
-- `applyDateFilter(page, from, to)`: Filter orders by date range
-- `getOrdersList(page)`: Extract all order elements from current page
-- `extractOrderMetadata(orderElement)`: Parse order details
-- `hasNextPage(page)`: Check for pagination
-- `goToNextPage(page)`: Navigate to next page of orders
-
-#### 4. Invoice Download Module (`lib/invoices.js`)
-
-Responsibilities:
-- Check if an invoice link exists for a given order
-- Generate target file path based on order date and number
-- Check if invoice file already exists locally
-- Trigger invoice download and wait for completion
-- Handle orders without invoices gracefully
-
-Key Functions:
-- `hasInvoice(orderElement)`: Check if invoice link is available
-- `generateFilePath(orderDate, orderNumber)`: Create YYYY-MM/invoice-{number}.pdf path
-- `fileExists(filePath)`: Check if invoice already downloaded
-- `downloadInvoice(page, invoiceLink, targetPath)`: Download and save PDF
-- `waitForDownload(downloadPath, timeout)`: Wait for PDF download to complete
-
-Download Strategy:
-- Use Playwright's download event handling
-- Set download path to the appropriate YYYY-MM folder
-- Implement timeout for download completion (30 seconds)
-- Verify file integrity after download
-
-#### 5. File System Module (`lib/filesystem.js`)
-
-Responsibilities:
-- Create month-based directories as needed
-- Ensure proper file paths and naming conventions
-- Verify file existence before downloads
-- Handle file system errors gracefully
-
-Key Functions:
-- `ensureDirectoryExists(dirPath)`: Create directory if it doesn't exist
-- `getMonthFolder(date)`: Convert date to YYYY-MM format
-- `sanitizeFilename(filename)`: Remove invalid characters from filenames
-- `checkDiskSpace()`: Optional: verify adequate disk space
-
-#### 6. Reporting Module (`lib/reporter.js`)
-
-Responsibilities:
-- Track download statistics (total, successful, skipped, failed)
-- Display real-time console progress updates
-- Generate formatted summary.txt file
-- Provide completion summary with statistics
-
-Key Functions:
-- `logProgress(orderIndex, totalOrders, orderData, status)`: Console logging
-- `logError(message, error)`: Error logging
-- `log2FAInstructions()`: Display 2FA instructions
-- `trackOrder(orderData, status)`: Add to internal tracking
-- `generateSummary(outputPath)`: Create summary.txt file
-- `displayFinalStats()`: Show completion statistics
-
-Summary File Format:
-```
-Amazon Invoice Download Summary
-Generated: 2025-10-17 14:30:25
-Date Range: 2025-01-01 to 2025-12-31
-
-Order #123-4567890-1234567
-  Date: 2025-01-15
-  Amount: $29.99
-  Product: Example Product Name
-  Status: Downloaded
-  File: 2025-01/invoice-123-4567890-1234567.pdf
-
-Order #123-4567890-1234568
-  Date: 2025-01-18
-  Amount: $49.99
-  Product: Another Product
-  Status: Skipped (already exists)
-  File: 2025-01/invoice-123-4567890-1234568.pdf
-
-...
-
-Summary Statistics:
-- Total orders processed: 45
-- Successfully downloaded: 38
-- Skipped (already exist): 5
-- No invoice available: 2
-- Failed: 0
-```
-
-### Main Application Flow (`index.js`)
-
-```
-1. Parse CLI arguments and load configuration
-2. Validate environment variables exist
-3. Launch Playwright browser (headless unless --debug)
-4. Navigate to Amazon.com
-5. Execute login flow (handle 2FA if detected)
-6. Navigate to order history page
-7. Apply date range filter
-8. For each order page:
-   a. Get list of orders
-   b. For each order:
-      - Extract metadata
-      - Check if invoice exists
-      - If no invoice: log and skip
-      - Generate file path
-      - Check if file already exists
-      - If exists: log and skip
-      - Download invoice PDF
-      - Track result in reporter
-   c. Check for next page, continue if exists
-9. Close browser
-10. Generate summary.txt
-11. Display final statistics
-12. Exit with appropriate code (0 for success)
-```
-
-### Error Handling Strategy
-
-Following the error handling best practices:
-
-- **User-Friendly Messages**: All errors displayed to console use clear, actionable language (e.g., "Failed to log in. Please check credentials in .env file")
-- **Fail Fast**: Validate configuration and credentials before launching browser; exit early if critical issues detected
-- **Specific Error Types**: Catch and handle specific Playwright errors (TimeoutError, NavigationError) differently
-- **Centralized Handling**: Main try-catch in index.js wraps the entire flow; individual modules throw errors up to be caught centrally
-- **Graceful Degradation**: Individual order failures don't stop entire process; script continues with remaining orders
-- **Retry Strategies**: Implement retry logic for transient network errors (max 3 retries with exponential backoff)
-- **Clean Up Resources**: Always close browser in finally block, even on errors or CTRL+C interruption
-
-Error Scenarios:
-
-1. **Missing Credentials**: Check for AMAZON_EMAIL and AMAZON_PASSWORD in .env; fail fast with clear message
-2. **Invalid Date Range**: Validate --from is before --to; provide helpful error
-3. **Login Failure**: Detect failed login; provide actionable message about credentials
-4. **Network Timeout**: Retry page navigation up to 3 times before failing
-5. **Missing Invoice**: Log as info (not error); skip order and continue
-6. **File Write Error**: Log error; skip order and continue
-7. **Download Timeout**: Log error; mark order as failed and continue
-8. **Interrupted Script**: Catch SIGINT (CTRL+C); close browser cleanly and save partial summary
-
-### CLI Usage Examples
-
-```bash
-# Install dependencies
-npm install
-
-# Download all invoices from current year
-node index.js
-
-# Download invoices for specific date range
-node index.js --from 2025-01-01 --to 2025-06-30
-
-# Run in debug mode (show browser)
-node index.js --debug
-
-# Combination: specific range in debug mode
-node index.js --from 2025-01-01 --to 2025-03-31 --debug
-```
-
-### Environment Variables
-
-`.env` file format:
-```
-AMAZON_EMAIL=your-email@example.com
-AMAZON_PASSWORD=your-password-here
-```
-
-Security considerations:
-- Include `.env` in `.gitignore`
-- Document .env.example with placeholder values
-- Never log credential values
-- Warn user if .env file is missing
-
-### Testing Strategy
-
-Following the test writing best practices (minimal testing during development):
-
-**Core User Flow Tests Only**:
-- Test successful login flow (mocked Amazon response)
-- Test order iteration and metadata extraction
-- Test invoice download with existing file skip
-- Test summary.txt generation
-
-**Deferred Testing**:
-- Edge cases (empty order history, malformed dates)
-- Error states (network failures, invalid credentials)
-- 2FA handling (requires manual testing)
-- Pagination edge cases
-
-**Testing Approach**:
-- Use Playwright's test utilities for browser automation tests
-- Mock Amazon pages using local HTML fixtures
-- Focus on behavior, not implementation details
-- Keep tests fast by mocking external dependencies
-- Manual testing in headed mode for 2FA and real Amazon interaction
-
-**Test Files**:
-```
-tests/
-├── config.test.js        # Configuration parsing
-├── filesystem.test.js    # File operations
-├── reporter.test.js      # Summary generation
-└── integration.test.js   # End-to-end with mocked Amazon
-```
-
-## Out of Scope
-
-The following features are explicitly excluded from this initial version:
-
-- Handling returns/refunds differently from regular orders
-- Processing archived orders (only current order history)
-- Downloading order receipts (only invoices)
-- Multi-account support (single Amazon account only)
-- Automatic 2FA handling (user must complete manually)
-- Email notifications upon completion
-- Database storage of order metadata
-- Web UI for configuration or monitoring
-- Scheduling/cron job integration
-- Cloud storage integration (S3, Google Drive, etc.)
-- Invoice parsing or data extraction (OCR)
-- Expense categorization or accounting integration
-- Internationalization (Amazon.com only, not regional sites)
-
-## Success Criteria
-
-- User can successfully download all available invoices for a specified date range with a single command
-- Script correctly authenticates to Amazon and handles 2FA by pausing for manual user intervention
-- Invoices are organized into month-based folders (YYYY-MM) with order-number-based filenames
-- Script skips re-downloading invoices that already exist locally
-- Script gracefully skips orders without available invoices and continues processing
-- Console output provides clear real-time progress updates
-- summary.txt file accurately lists all processed orders with their download status
-- Script runs in headless mode by default and can be switched to headed mode with --debug flag
-- Individual order failures do not stop the entire process
-- Browser session closes cleanly on completion or interruption
-- All sensitive credentials are stored in .env file and never logged to console or files
-
-## Implementation Notes
-
-### Playwright Configuration
-
+Add new yargs option:
 ```javascript
-const browser = await playwright.chromium.launch({
-  headless: !config.debug, // Headed mode when --debug flag is set
-  slowMo: config.debug ? 100 : 0, // Slow down actions in debug mode
-});
-
-const context = await browser.newContext({
-  acceptDownloads: true,
-  viewport: { width: 1280, height: 720 },
-});
-
-const page = await context.newPage();
-
-// Set reasonable timeouts
-page.setDefaultTimeout(30000); // 30 seconds for most operations
-page.setDefaultNavigationTimeout(60000); // 60 seconds for page loads
+.option('manual-auth', {
+  alias: 'm',
+  type: 'boolean',
+  description: 'Use manual authentication instead of automated login',
+  default: false
+})
 ```
 
-### Selector Strategy
-
-Prefer stable selectors in this order:
-1. ID attributes (`#email`)
-2. Name attributes (`input[name="email"]`)
-3. ARIA labels (`button[aria-label="Submit"]`)
-4. Data attributes (`[data-testid="invoice-link"]`)
-5. Text content (last resort, may break with internationalization)
-
-Document each selector with a comment explaining its purpose and fallback options.
-
-### Wait Strategies
-
-Use explicit waits for dynamic content:
+Update headless configuration logic:
 ```javascript
-// Wait for element to be visible
-await page.waitForSelector('#orderList', { state: 'visible' });
-
-// Wait for navigation to complete
-await Promise.all([
-  page.waitForNavigation({ waitUntil: 'networkidle' }),
-  page.click('#submitButton'),
-]);
-
-// Wait for download to start
-const downloadPromise = page.waitForEvent('download');
+// Force headed mode when manual auth is enabled
+const manualAuth = argv['manual-auth'];
+const headless = manualAuth ? false : !argv.debug;
 ```
 
-### Graceful Shutdown
-
-Handle CTRL+C interruption:
+Export new configuration:
 ```javascript
-process.on('SIGINT', async () => {
-  console.log('\nInterrupted. Cleaning up...');
-  await reporter.generateSummary('summary.txt');
-  await browser.close();
-  process.exit(0);
-});
+const config = {
+  // ... existing config ...
+  manualAuth: manualAuth,
+  headless: headless,
+  // ... rest of config ...
+};
 ```
 
-### Logging Best Practices
+### Authentication Flow Changes
 
-- Use clear, actionable messages
-- Include timestamps for debugging (when errors occur)
-- Use visual indicators (✓, ⊘, ✗) for status
-- Show progress (e.g., "Processing 3/45")
-- Provide context in error messages
+**Authentication Module Updates (`lib/auth.js`):**
 
-### Dependencies
+Add new manual login function:
+```javascript
+/**
+ * Manual authentication workflow
+ * Navigates to Amazon.com and waits for user to complete authentication
+ * @param {import('playwright').Page} page - Playwright page instance
+ * @returns {Promise<void>}
+ */
+async function manualLogin(page) {
+  // Navigate to Amazon home page
+  await page.goto('https://www.amazon.com/', { waitUntil: 'domcontentloaded' });
 
-`package.json` dependencies:
-```json
-{
-  "dependencies": {
-    "playwright": "^1.40.0",
-    "dotenv": "^16.3.1",
-    "yargs": "^17.7.2"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.40.0"
+  console.log('\n=================================================');
+  console.log('MANUAL AUTHENTICATION REQUIRED');
+  console.log('=================================================');
+  console.log('Please complete the following steps:\n');
+  console.log('1. The browser window is now open showing Amazon.com');
+  console.log('2. Click "Sign in" in the browser');
+  console.log('3. Enter your email and password manually');
+  console.log('4. Complete any 2FA/CAPTCHA challenges');
+  console.log('5. Wait for the Amazon home page to fully load');
+  console.log('6. Do NOT close the browser window\n');
+  console.log('The script will automatically detect when you\'re logged in');
+  console.log('and continue downloading invoices.\n');
+  console.log('Waiting for authentication... (Press Ctrl+C to cancel)');
+  console.log('=================================================\n');
+
+  // Poll for authentication every 3 seconds
+  const pollInterval = 3000;
+  const maxWaitTime = 10 * 60 * 1000; // 10 minutes maximum
+  const startTime = Date.now();
+
+  while (true) {
+    // Check timeout
+    if (Date.now() - startTime > maxWaitTime) {
+      throw new Error('Manual authentication timeout: Maximum wait time of 10 minutes exceeded');
+    }
+
+    // Check if authenticated
+    console.log('Checking authentication status...');
+    const isAuthenticated = await verifyAuthentication(page);
+
+    if (isAuthenticated) {
+      console.log('Authentication detected!');
+      return;
+    }
+
+    // Wait before next check
+    await page.waitForTimeout(pollInterval);
   }
 }
 ```
 
-### File Path Handling
+Export the new function:
+```javascript
+module.exports = {
+  login,
+  manualLogin, // NEW
+  detect2FA,
+  waitFor2FA,
+  verifyAuthentication,
+};
+```
 
-- Use Node.js `path` module for cross-platform compatibility
-- Always use absolute paths when working with Playwright downloads
-- Sanitize order numbers to remove invalid filename characters
-- Create directories recursively using `fs.promises.mkdir({ recursive: true })`
+### Main Application Integration
 
-### Date Handling
+**Index.js Changes:**
 
-- Parse CLI date arguments in ISO format (YYYY-MM-DD)
-- Default to current year: January 1 to December 31
-- Validate that --from date is before --to date
-- Format dates for Amazon's UI (may need MM/DD/YYYY format)
+Update authentication flow to use conditional logic:
+```javascript
+// Step 1: Authentication
+console.log('Navigating to Amazon.com...');
 
-### Performance Considerations
+if (config.manualAuth) {
+  // Manual authentication mode
+  console.log('Manual authentication mode enabled');
+  await auth.manualLogin(page);
+} else {
+  // Automated authentication mode
+  console.log('Logging in...');
+  await auth.login(page, config.email, config.password);
 
-- Run headless by default (faster than headed mode)
-- Implement reasonable waits (avoid arbitrary `setTimeout`)
-- Download invoices in sequence (not parallel) to avoid overwhelming Amazon's servers
-- Consider rate limiting if processing large number of orders (optional)
+  // Check for 2FA in automated mode
+  const needs2FA = await auth.detect2FA(page);
+  if (needs2FA) {
+    reporter.log2FAInstructions();
+    await auth.waitFor2FA(page);
+  }
+}
+
+// Verify authentication successful (works for both modes)
+const isAuthenticated = await auth.verifyAuthentication(page);
+if (!isAuthenticated) {
+  throw new Error('Authentication failed. Please try again.');
+}
+
+console.log('Login successful!\n');
+
+// Continue with normal flow...
+```
+
+### Reporter Enhancements
+
+**Reporter Module Updates (`lib/reporter.js`):**
+
+Update `logStartup()` function:
+```javascript
+function logStartup(config) {
+  console.log('=================================================');
+  console.log('Starting Amazon Invoice Automation...');
+  console.log('=================================================');
+
+  // Only show credentials message in automated mode
+  if (!config.manualAuth) {
+    console.log('Loaded credentials from .env');
+  }
+
+  console.log(`Date range: ${config.from} to ${config.to}`);
+
+  // Enhanced browser mode message
+  let browserMode = config.headless ? 'headless' : 'headed';
+  if (config.manualAuth) {
+    browserMode += ' (manual authentication)';
+  } else if (config.debug) {
+    browserMode += ' (debug)';
+  }
+  console.log(`Browser mode: ${browserMode}`);
+
+  // Show authentication mode
+  const authMode = config.manualAuth ? 'MANUAL' : 'AUTOMATED';
+  console.log(`Authentication mode: ${authMode}`);
+
+  console.log('=================================================\n');
+}
+```
+
+### Logged-In State Detection
+
+**Detection Strategy:**
+
+Reuse existing `verifyAuthentication()` function from `lib/auth.js` which checks:
+
+1. Account menu element (`#nav-link-accountList`)
+2. Text content does NOT contain "Sign in"
+3. Text content DOES contain "Hello" or "Account"
+4. Orders link is present (`#nav-orders`)
+
+This multi-factor verification ensures reliable detection across different Amazon page states.
+
+**Polling Configuration:**
+- Poll interval: 3 seconds (balance between responsiveness and resource usage)
+- Maximum wait time: 10 minutes (generous timeout for complex 2FA)
+- Console feedback: Print status message every poll iteration so user knows script is still running
+
+### Error Handling
+
+**Timeout Scenario:**
+- After 10 minutes without successful authentication
+- Throw clear error: "Manual authentication timeout: Maximum wait time of 10 minutes exceeded"
+- Cleanup browser and exit gracefully
+
+**User Closes Browser:**
+- Playwright will throw an error if user closes browser window
+- Catch error and provide helpful message: "Browser was closed before authentication completed"
+
+**User Cancels (CTRL+C):**
+- Existing SIGINT handler will catch this
+- Generate partial summary and cleanup browser
+- No special handling needed
+
+### CLI Usage Examples
+
+```bash
+# Manual authentication with default date range (current year)
+node index.js --manual-auth
+
+# Manual authentication with custom date range
+node index.js --manual-auth --from 2025-01-01 --to 2025-06-30
+
+# Manual authentication (short form)
+node index.js -m
+
+# Manual auth overrides debug flag (both produce same result: headed mode)
+node index.js --manual-auth --debug
+node index.js --manual-auth
+
+# Invalid: manual-auth doesn't require credentials but they won't cause issues
+# The script will simply not use them
+node index.js --manual-auth
+# (AMAZON_EMAIL and AMAZON_PASSWORD in .env are ignored)
+```
+
+### Credential Handling
+
+**Important Behavior:**
+- When `--manual-auth` is used, credentials from `.env` are NOT required
+- Modify `lib/config.js` to skip credential validation when `manualAuth` is true:
+
+```javascript
+// Only fail fast on missing credentials in automated mode
+if (!manualAuth && (!email || !password)) {
+  console.error('Configuration Error: Missing credentials');
+  console.error('Please create a .env file with AMAZON_EMAIL and AMAZON_PASSWORD');
+  console.error('Or use --manual-auth flag to authenticate manually');
+  process.exit(1);
+}
+```
+
+## Out of Scope
+
+The following features are explicitly excluded from this implementation:
+
+- Automatic credential saving after manual authentication (session persistence across runs)
+- Browser profile reuse to avoid repeated authentication
+- Headless manual authentication (manual auth always requires visible browser)
+- Interactive prompts to ask user if they want manual or automated mode
+- Automatic fallback to manual auth if automated auth fails
+- Screenshots or recording of the manual authentication process
+- Browser automation hints or guidance during manual authentication (user does everything)
+- Detection of specific authentication failures (CAPTCHA, wrong password, etc.)
+
+## Success Criteria
+
+- User can successfully invoke `--manual-auth` parameter via CLI
+- When `--manual-auth` is set, browser launches in headed mode automatically
+- Script navigates to Amazon.com home page without attempting automated login
+- Clear console instructions are displayed explaining manual authentication requirements
+- Script successfully detects when user has completed authentication
+- Once authentication is detected, normal invoice downloading flow proceeds unchanged
+- Script handles timeout gracefully with clear error message after 10 minutes
+- Manual authentication works in combination with `--from` and `--to` parameters
+- Console startup message correctly identifies "MANUAL" authentication mode
+- Credentials validation is skipped when `--manual-auth` is enabled
+- User can cancel manual authentication with CTRL+C and browser cleans up properly
+
+## Implementation Notes
+
+### Testing Manual Authentication
+
+**Manual Testing Approach:**
+1. Run script with `--manual-auth` flag
+2. Verify browser opens in headed mode
+3. Verify console instructions are clear and accurate
+4. Manually sign in to Amazon in the browser
+5. Verify script detects authentication and continues
+6. Verify invoices are downloaded normally
+
+**Test Scenarios:**
+- Manual auth with default date range
+- Manual auth with custom date range
+- Manual auth with 2FA enabled account
+- Manual auth timeout scenario (wait > 10 minutes)
+- Manual auth cancellation (CTRL+C during waiting)
+- Manual auth with CAPTCHA challenges
+
+**Automated Testing:**
+Not practical for manual authentication flow itself, but can test:
+- Configuration parsing of `--manual-auth` flag
+- Headless mode is disabled when manual auth is enabled
+- Credentials validation is skipped appropriately
+- Authentication detection function works correctly
+
+### Polling Best Practices
+
+**Why 3-second intervals:**
+- Fast enough to feel responsive when user completes auth
+- Slow enough to not spam console or consume unnecessary resources
+- Balance between user experience and system efficiency
+
+**Console Feedback:**
+- Print status message on each poll iteration
+- Prevents user from thinking script has frozen
+- Provides reassurance that script is still running
+
+**Timeout Selection:**
+- 10 minutes is generous for manual authentication
+- Accounts for complex 2FA (SMS delays, authenticator app lookups)
+- Accounts for users who might step away briefly
+- Long enough to not frustrate users, short enough to detect abandoned sessions
+
+### Browser Behavior
+
+**Always Headed Mode:**
+- Manual authentication requires visible browser by definition
+- Force `headless: false` when `--manual-auth` is true
+- Ignore `--debug` flag value (redundant with manual auth)
+
+**Browser Stays Open:**
+- Browser window remains open throughout entire process
+- Users can observe invoice downloading after authentication
+- Closes automatically when script completes or errors
 
 ### Security Considerations
 
-- Store credentials in `.env` file
-- Add `.env` to `.gitignore` immediately
-- Provide `.env.example` file with placeholder values
-- Never log password values to console or files
-- Clear any credential input fields after use (optional)
-- Warn user if `.env` file has broad permissions (optional enhancement)
+**No Credential Storage:**
+- Manual auth mode doesn't save or cache credentials
+- Users enter credentials fresh each time
+- More secure for users with credential concerns
 
-### Monitoring and Debugging
+**Full Amazon Security:**
+- Script doesn't bypass any Amazon security measures
+- Users complete full Amazon authentication flow
+- All 2FA, CAPTCHA, and security checks are handled by user
 
-When --debug flag is used:
-- Launch browser in headed mode
-- Slow down actions (slowMo: 100)
-- Keep browser open on errors for inspection
-- Provide verbose console logging
-- Optionally save screenshots on errors
+**Visibility:**
+- Headed mode allows users to see exactly what's happening
+- Transparent authentication process
+- Users maintain full control over credential entry
 
-Without --debug flag:
-- Run headless for optimal performance
-- Provide concise console output
-- Close browser immediately on completion or error
+### Edge Cases
+
+**Multiple Authentication Attempts:**
+- If user fails login, they can retry in the same browser session
+- Script continues polling until success or timeout
+- No limit on number of failed attempts within timeout window
+
+**Page Navigation During Wait:**
+- If user navigates away from Amazon during polling, detection continues
+- `verifyAuthentication()` checks for authenticated elements anywhere on amazon.com
+- User can browse Amazon while script waits (though not recommended)
+
+**Session Already Authenticated:**
+- If browser session is already authenticated (rare), script detects immediately
+- No need to manually log in again
+- Script proceeds directly to invoice downloading
+
+### Code Organization
+
+**Separation of Concerns:**
+- Authentication logic stays in `lib/auth.js`
+- Configuration logic stays in `lib/config.js`
+- Main orchestration stays in `index.js`
+- No mixing of manual/automated auth logic - clean conditional branching
+
+**Backward Compatibility:**
+- Existing automated authentication flow unchanged
+- All existing CLI parameters continue to work
+- No breaking changes to existing functionality
+- Manual auth is purely additive feature
+
+### Documentation Updates
+
+**README.md additions needed:**
+- Document `--manual-auth` parameter
+- Explain when to use manual vs automated authentication
+- Provide usage examples
+- Note that credentials aren't required for manual auth mode
+
+**Help Text:**
+Already handled by yargs description field:
+```bash
+node index.js --help
+# Shows:
+# --manual-auth, -m  Use manual authentication instead of automated login
+```
+
+### Performance Considerations
+
+**Resource Usage:**
+- Polling every 3 seconds is lightweight (just DOM queries)
+- No significant CPU or memory impact
+- Browser window uses more resources than headless, but necessary for manual auth
+
+**Network Impact:**
+- Minimal network traffic during polling (no page reloads)
+- Only checks existing page elements
+- No external API calls during waiting period
+
+### Future Enhancements (Not in Scope)
+
+**Session Persistence:**
+- Could save browser session/cookies for reuse
+- Would eliminate need for repeated authentication
+- Requires cookie/session management implementation
+
+**Smart Timeout:**
+- Could adapt timeout based on user activity
+- Extend timeout if user is actively interacting with page
+- Requires mouse/keyboard activity detection
+
+**Progress Indicators:**
+- Could show elapsed time / remaining time
+- Animated waiting indicator
+- Would enhance user experience
+
+**Automatic Retry:**
+- If automated auth fails, automatically offer manual auth
+- Would improve robustness
+- Requires error detection and user prompting

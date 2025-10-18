@@ -153,3 +153,107 @@ test('should calculate statistics for all order types', async () => {
   expect(stats.noInvoice).toBe(1);
   expect(stats.failed).toBe(1);
 });
+
+// ====================================================================
+// MANUAL AUTHENTICATION REPORTER TESTS (Task Group 3.1)
+// ====================================================================
+
+// Test 5: logStartup shows MANUAL authentication mode when manualAuth is true
+test('should display MANUAL authentication mode when manualAuth is true', async () => {
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/reporter.js')];
+  const reporter = require('../lib/reporter.js');
+
+  // Capture console output
+  const consoleOutput = [];
+  const originalLog = console.log;
+  console.log = (...args) => {
+    consoleOutput.push(args.join(' '));
+  };
+
+  // Call logStartup with manual auth enabled
+  const config = {
+    from: '2025-01-01',
+    to: '2025-12-31',
+    headless: false,
+    manualAuth: true
+  };
+
+  reporter.logStartup(config);
+
+  // Restore console.log
+  console.log = originalLog;
+
+  // Verify authentication mode is MANUAL
+  const authModeLine = consoleOutput.find(line => line.includes('Authentication mode:'));
+  expect(authModeLine).toBeTruthy();
+  expect(authModeLine).toContain('MANUAL');
+});
+
+// Test 6: logStartup shows AUTOMATED authentication mode when manualAuth is false
+test('should display AUTOMATED authentication mode when manualAuth is false', async () => {
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/reporter.js')];
+  const reporter = require('../lib/reporter.js');
+
+  // Capture console output
+  const consoleOutput = [];
+  const originalLog = console.log;
+  console.log = (...args) => {
+    consoleOutput.push(args.join(' '));
+  };
+
+  // Call logStartup with manual auth disabled
+  const config = {
+    from: '2025-01-01',
+    to: '2025-12-31',
+    headless: true,
+    manualAuth: false
+  };
+
+  reporter.logStartup(config);
+
+  // Restore console.log
+  console.log = originalLog;
+
+  // Verify authentication mode is AUTOMATED
+  const authModeLine = consoleOutput.find(line => line.includes('Authentication mode:'));
+  expect(authModeLine).toBeTruthy();
+  expect(authModeLine).toContain('AUTOMATED');
+});
+
+// Test 7: logStartup includes '(manual authentication)' in browser mode when manual auth enabled
+test('should include manual authentication context in browser mode message', async () => {
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/reporter.js')];
+  const reporter = require('../lib/reporter.js');
+
+  // Capture console output
+  const consoleOutput = [];
+  const originalLog = console.log;
+  console.log = (...args) => {
+    consoleOutput.push(args.join(' '));
+  };
+
+  // Test manual auth mode
+  const manualConfig = {
+    from: '2025-01-01',
+    to: '2025-12-31',
+    headless: false,
+    manualAuth: true
+  };
+
+  reporter.logStartup(manualConfig);
+
+  // Restore console.log
+  console.log = originalLog;
+
+  // Verify browser mode includes manual authentication context
+  const browserModeLine = consoleOutput.find(line => line.includes('Browser mode:'));
+  expect(browserModeLine).toBeTruthy();
+  expect(browserModeLine).toContain('(manual authentication)');
+
+  // Verify credentials message is NOT shown
+  const credentialsLine = consoleOutput.find(line => line.includes('Loaded credentials from .env'));
+  expect(credentialsLine).toBeUndefined();
+});

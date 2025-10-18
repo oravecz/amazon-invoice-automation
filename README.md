@@ -90,11 +90,29 @@ Specify date range and enable debug mode:
 node index.js --from 2025-01-01 --to 2025-03-31 --debug
 ```
 
+### Manual Authentication
+
+Use manual authentication when you prefer to enter credentials yourself or encounter automated login issues:
+
+```bash
+# Manual authentication with default date range (current year)
+node index.js --manual-auth
+
+# Manual authentication with custom date range
+node index.js --manual-auth --from 2025-01-01 --to 2025-06-30
+
+# Manual authentication (short form)
+node index.js -m
+```
+
+**Note:** When using `--manual-auth`, credentials in `.env` are NOT required. The browser will open in visible mode (headed) automatically, and you'll enter your credentials manually in the browser window.
+
 ## CLI Arguments
 
-- `--from <date>`: Start date in YYYY-MM-DD format (default: January 1 of current year)
-- `--to <date>`: End date in YYYY-MM-DD format (default: December 31 of current year)
-- `--debug`: Show browser window and slow down actions for debugging
+- `--from <date>` / `-f <date>`: Start date in YYYY-MM-DD format (default: January 1 of current year)
+- `--to <date>` / `-t <date>`: End date in YYYY-MM-DD format (default: December 31 of current year)
+- `--debug` / `-d`: Show browser window and slow down actions for debugging
+- `--manual-auth` / `-m`: Use manual authentication instead of automated login (see Manual Authentication section below)
 
 ## Output
 
@@ -185,6 +203,112 @@ Waiting for manual 2FA completion...
 (Press Ctrl+C to cancel)
 ```
 
+## Manual Authentication
+
+The manual authentication feature (`--manual-auth` / `-m`) provides an alternative way to authenticate to Amazon by letting you manually enter your credentials in a visible browser window, rather than using automated login.
+
+### When to Use Manual Authentication
+
+Use manual authentication if:
+
+- You prefer to enter credentials yourself for security reasons
+- You encounter automated login failures or CAPTCHA challenges
+- You have complex 2FA requirements that work better with manual entry
+- You want full visibility into the authentication process
+- You don't want to store credentials in the `.env` file
+- You're debugging authentication issues
+
+### How Manual Authentication Works
+
+When you run the script with `--manual-auth`:
+
+1. **Browser Opens**: The script launches a visible browser window and navigates to Amazon.com
+2. **Manual Login**: You manually complete the entire login process yourself:
+   - Click "Sign in" in the browser
+   - Enter your email address
+   - Enter your password
+   - Complete any 2FA/CAPTCHA challenges
+   - Wait for the Amazon home page to fully load
+3. **Automatic Detection**: The script polls every 3 seconds to detect when you've successfully logged in
+4. **Continues Normally**: Once authentication is detected, the script automatically continues to download invoices
+
+### Usage Example
+
+```bash
+# Run with manual authentication
+node index.js --manual-auth
+```
+
+**Console Output:**
+
+```
+=================================================
+Starting Amazon Invoice Automation...
+=================================================
+Date range: 2025-01-01 to 2025-12-31
+Browser mode: headed (manual authentication)
+Authentication mode: MANUAL
+=================================================
+
+Launching browser (headed mode)...
+Navigating to Amazon.com...
+
+=================================================
+MANUAL AUTHENTICATION REQUIRED
+=================================================
+Please complete the following steps:
+
+1. The browser window is now open showing Amazon.com
+2. Click "Sign in" in the browser
+3. Enter your email and password manually
+4. Complete any 2FA/CAPTCHA challenges
+5. Wait for the Amazon home page to fully load
+6. Do NOT close the browser window
+
+The script will automatically detect when you're logged in
+and continue downloading invoices.
+
+Waiting for authentication... (Press Ctrl+C to cancel)
+=================================================
+
+Checking authentication status...
+Checking authentication status...
+Authentication detected!
+Login successful!
+
+Navigating to order history...
+[... continues with invoice downloading ...]
+```
+
+### Important Notes
+
+- **No Credentials Required**: When using `--manual-auth`, you don't need `AMAZON_EMAIL` or `AMAZON_PASSWORD` in your `.env` file
+- **Always Visible Browser**: Manual authentication automatically enables headed (visible) browser mode - you cannot use manual auth in headless mode
+- **10-Minute Timeout**: You have 10 minutes to complete authentication. After that, the script will timeout with an error
+- **Don't Close Browser**: Keep the browser window open during authentication - the script needs it to detect when you're logged in
+- **Works with All Date Ranges**: Manual authentication works with `--from` and `--to` parameters just like automated authentication
+
+### Troubleshooting Manual Authentication
+
+**Authentication Not Detected:**
+- Make sure you've completed the full login flow and reached the Amazon home page
+- Verify you see "Hello, [Your Name]" in the top-right corner of Amazon
+- Wait a few seconds - the script checks every 3 seconds
+- Check the console for "Checking authentication status..." messages
+
+**Timeout Error:**
+- If you exceed 10 minutes, the script will stop with an error
+- This is normal - just run the script again with `--manual-auth`
+- The timeout prevents the script from waiting indefinitely
+
+**Browser Closed Accidentally:**
+- If you close the browser before authentication completes, the script will error
+- Just restart the script with `--manual-auth` and try again
+
+**Multiple Login Attempts:**
+- You can retry failed login attempts within the same 10-minute window
+- The script will keep checking until you successfully authenticate or timeout
+
 ## Troubleshooting
 
 ### Login Failures
@@ -192,6 +316,7 @@ Waiting for manual 2FA completion...
 - Verify your credentials in the `.env` file are correct
 - Check if Amazon requires 2FA (the script will pause for you to complete it)
 - Try running with `--debug` flag to see what's happening in the browser
+- Use `--manual-auth` flag to authenticate manually if automated login fails
 
 ### No Invoices Found
 
@@ -219,7 +344,7 @@ If you press Ctrl+C during execution:
 ## Known Limitations
 
 - Only works with Amazon.com (not international Amazon sites like amazon.co.uk, amazon.de, etc.)
-- Requires manual 2FA completion (cannot automate OTP codes)
+- Requires manual 2FA completion in automated mode (cannot automate OTP codes) - use `--manual-auth` for full manual control
 - Does not handle archived orders (only current order history visible in your account)
 - Downloads one invoice at a time (sequential, not parallel) to avoid rate limiting
 - Amazon may update their UI, requiring selector updates in the code
@@ -235,8 +360,9 @@ If you press Ctrl+C during execution:
 - All downloads happen locally on your machine
 - Browser automation uses official Playwright library
 - No data is sent to third-party servers
+- **Manual Authentication Option**: Use `--manual-auth` to enter credentials directly in the browser if you prefer not to store them in `.env`
 - **IMPORTANT**: Keep your `.env` file secure and never share it
-- **IMPORTANT**: This tool requires your Amazon password - use at your own risk
+- **IMPORTANT**: This tool requires your Amazon password - use at your own risk (or use `--manual-auth` to avoid storing credentials)
 
 ## Testing Installation
 

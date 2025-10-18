@@ -41,12 +41,26 @@ async function main() {
     browser = await chromium.launch({
       headless: config.headless,
       slowMo: config.debug ? 100 : 0, // Slow down in debug mode
+      args: [
+        '--disable-blink-features=AutomationControlled', // Remove navigator.webdriver flag
+      ],
     });
 
-    // Create browser context with download support
+    // Create browser context with download support and realistic Chrome user agent
     const context = await browser.newContext({
       acceptDownloads: true,
       viewport: { width: 1280, height: 720 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+
+    // Override navigator.webdriver to undefined
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      });
     });
 
     const page = await context.newPage();
@@ -57,20 +71,28 @@ async function main() {
 
     // Step 1: Authentication
     console.log('Navigating to Amazon.com...');
-    console.log('Logging in...');
-    await auth.login(page, config.email, config.password);
 
-    // Check for 2FA
-    const needs2FA = await auth.detect2FA(page);
-    if (needs2FA) {
-      reporter.log2FAInstructions();
-      await auth.waitFor2FA(page);
+    if (config.manualAuth) {
+      // Manual authentication mode
+      console.log('Manual authentication mode enabled');
+      await auth.manualLogin(page);
+    } else {
+      // Automated authentication mode
+      console.log('Logging in...');
+      await auth.login(page, config.email, config.password);
+
+      // Check for 2FA in automated mode
+      const needs2FA = await auth.detect2FA(page);
+      if (needs2FA) {
+        reporter.log2FAInstructions();
+        await auth.waitFor2FA(page);
+      }
     }
 
-    // Verify authentication successful
+    // Verify authentication successful (works for both modes)
     const isAuthenticated = await auth.verifyAuthentication(page);
     if (!isAuthenticated) {
-      throw new Error('Authentication failed. Please check your credentials in .env file');
+      throw new Error('Authentication failed. Please try again.');
     }
 
     console.log('Login successful!\n');

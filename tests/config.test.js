@@ -139,3 +139,145 @@ test('should set headless to true when debug flag not provided', async () => {
   delete process.env.AMAZON_EMAIL;
   delete process.env.AMAZON_PASSWORD;
 });
+
+// Test 5: Manual auth flag parsing sets manualAuth to true
+test('should parse --manual-auth flag and set manualAuth to true', async () => {
+  // Save original process.argv
+  const originalArgv = process.argv;
+
+  // Mock CLI arguments with --manual-auth flag
+  process.argv = ['node', 'index.js', '--manual-auth'];
+
+  // Mock environment variables (not required for manual auth, but set for consistency)
+  process.env.AMAZON_EMAIL = 'test@example.com';
+  process.env.AMAZON_PASSWORD = 'test-password';
+
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/config.js')];
+
+  const config = require('../lib/config.js');
+
+  expect(config.manualAuth).toBe(true);
+
+  // Restore
+  process.argv = originalArgv;
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+});
+
+// Test 6: Manual auth automatically forces headless to false
+test('should force headless to false when --manual-auth is enabled', async () => {
+  // Save original process.argv
+  const originalArgv = process.argv;
+
+  // Mock CLI arguments with --manual-auth flag
+  process.argv = ['node', 'index.js', '--manual-auth'];
+
+  // Mock environment variables
+  process.env.AMAZON_EMAIL = 'test@example.com';
+  process.env.AMAZON_PASSWORD = 'test-password';
+
+  // Clear require cache
+  delete require.cache[require.resolve('../lib/config.js')];
+
+  const config = require('../lib/config.js');
+
+  expect(config.manualAuth).toBe(true);
+  expect(config.headless).toBe(false);
+
+  // Restore
+  process.argv = originalArgv;
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+});
+
+// Test 7: Credentials validation is skipped when manualAuth is true
+test('should skip credential validation when --manual-auth is enabled', async () => {
+  // Save original process.argv and env
+  const originalArgv = process.argv;
+  const originalEmail = process.env.AMAZON_EMAIL;
+  const originalPassword = process.env.AMAZON_PASSWORD;
+
+  // Mock CLI arguments with --manual-auth flag
+  process.argv = ['node', 'index.js', '--manual-auth'];
+
+  // Clear environment variables to simulate missing credentials
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+
+  // Clear require cache and dotenv cache
+  delete require.cache[require.resolve('../lib/config.js')];
+  delete require.cache[require.resolve('dotenv')];
+
+  // Mock dotenv to not load .env file
+  const Module = require('module');
+  const originalRequire = Module.prototype.require;
+  Module.prototype.require = function(id) {
+    if (id === 'dotenv') {
+      return { config: () => {} }; // Mock dotenv.config to do nothing
+    }
+    return originalRequire.apply(this, arguments);
+  };
+
+  // This should NOT throw an error or exit the process despite missing credentials
+  const config = require('../lib/config.js');
+
+  expect(config.manualAuth).toBe(true);
+  // Credentials may be undefined when manual auth is used and .env is not loaded
+  expect(config.email).toBeUndefined();
+  expect(config.password).toBeUndefined();
+
+  // Restore
+  Module.prototype.require = originalRequire;
+  process.argv = originalArgv;
+  if (originalEmail) process.env.AMAZON_EMAIL = originalEmail;
+  if (originalPassword) process.env.AMAZON_PASSWORD = originalPassword;
+});
+
+// Test 8: Combining manual auth with from and to flags
+test('should allow combining --manual-auth with --from and --to flags', async () => {
+  // Save original process.argv and env
+  const originalArgv = process.argv;
+  const originalEmail = process.env.AMAZON_EMAIL;
+  const originalPassword = process.env.AMAZON_PASSWORD;
+
+  // Mock CLI arguments with --manual-auth and date range flags
+  process.argv = [
+    'node',
+    'index.js',
+    '--manual-auth',
+    '--from', '2025-01-01',
+    '--to', '2025-06-30'
+  ];
+
+  // Clear environment variables to simulate missing credentials
+  delete process.env.AMAZON_EMAIL;
+  delete process.env.AMAZON_PASSWORD;
+
+  // Clear require cache and dotenv cache
+  delete require.cache[require.resolve('../lib/config.js')];
+  delete require.cache[require.resolve('dotenv')];
+
+  // Mock dotenv to not load .env file
+  const Module = require('module');
+  const originalRequire = Module.prototype.require;
+  Module.prototype.require = function(id) {
+    if (id === 'dotenv') {
+      return { config: () => {} }; // Mock dotenv.config to do nothing
+    }
+    return originalRequire.apply(this, arguments);
+  };
+
+  const config = require('../lib/config.js');
+
+  expect(config.manualAuth).toBe(true);
+  expect(config.from).toBe('2025-01-01');
+  expect(config.to).toBe('2025-06-30');
+  expect(config.headless).toBe(false);
+
+  // Restore
+  Module.prototype.require = originalRequire;
+  process.argv = originalArgv;
+  if (originalEmail) process.env.AMAZON_EMAIL = originalEmail;
+  if (originalPassword) process.env.AMAZON_PASSWORD = originalPassword;
+});

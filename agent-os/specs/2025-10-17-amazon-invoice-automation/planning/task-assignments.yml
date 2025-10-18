@@ -1,43 +1,53 @@
-# Task Assignments for Amazon Invoice Automation
-# Maps task groups to specialized implementer agents
+# Task Assignments: Manual Authentication CLI Parameter
+# Generated: 2025-10-17
+# Spec: agent-os/specs/2025-10-17-amazon-invoice-automation/spec.md
+# Tasks: agent-os/specs/2025-10-17-amazon-invoice-automation/tasks.md
 
 task_assignments:
-  - task_group: "Task Group 1: Project Setup & Configuration"
-    assigned_subagent: "devops-engineer"
-    rationale: "DevOps engineer specializes in project initialization, dependencies, git hooks, and infrastructure setup"
-
-  - task_group: "Task Group 2: Configuration & CLI Module"
+  - task_group: "Task Group 1: CLI Argument Parsing and Configuration"
     assigned_subagent: "backend-engineer"
-    rationale: "Backend engineer handles Node.js modules, configuration management, and CLI parsing"
+    dependencies: []
+    files_modified:
+      - lib/config.js
+      - tests/config.test.js
 
-  - task_group: "Task Group 3: File System Module"
+  - task_group: "Task Group 2: Manual Authentication Flow"
+    assigned_subagent: "automation-engineer"
+    dependencies: ["Task Group 1"]
+    files_modified:
+      - lib/auth.js
+      - tests/auth.test.js
+
+  - task_group: "Task Group 3: Console Output Enhancements"
     assigned_subagent: "backend-engineer"
-    rationale: "Backend engineer specializes in file system operations and Node.js module implementations"
+    dependencies: ["Task Group 1"]
+    files_modified:
+      - lib/reporter.js
+      - tests/reporter.test.js
 
-  - task_group: "Task Group 4: Reporter Module"
-    assigned_subagent: "backend-engineer"
-    rationale: "Backend engineer handles logging, reporting, and file generation"
-
-  - task_group: "Task Group 5: Authentication Module"
-    assigned_subagent: "automation-engineer"
-    rationale: "Automation engineer specializes in Playwright, browser automation, and authentication flows"
-
-  - task_group: "Task Group 6: Order Navigation Module"
-    assigned_subagent: "automation-engineer"
-    rationale: "Automation engineer handles web scraping, element selection, and page navigation"
-
-  - task_group: "Task Group 7: Invoice Download Module"
-    assigned_subagent: "automation-engineer"
-    rationale: "Automation engineer specializes in download handling and Playwright automation"
-
-  - task_group: "Task Group 8: Main CLI Application"
+  - task_group: "Task Group 4: Main Application Orchestration"
     assigned_subagent: "integration-engineer"
-    rationale: "Integration engineer specializes in orchestrating modules, error handling, and process lifecycle"
+    dependencies: ["Task Group 1", "Task Group 2", "Task Group 3"]
+    files_modified:
+      - index.js
+      - tests/index.test.js
 
-  - task_group: "Task Group 9: Integration Testing & Manual Verification"
+  - task_group: "Task Group 5: Test Review & Manual Verification"
     assigned_subagent: "testing-engineer"
-    rationale: "Testing engineer handles test coverage analysis, integration testing, and manual verification"
+    dependencies: ["Task Group 1", "Task Group 2", "Task Group 3", "Task Group 4"]
+    files_modified:
+      - tests/* (review and add strategic tests)
 
-  - task_group: "Task Group 10: Documentation & Final Polish"
+  - task_group: "Task Group 6: Documentation Updates"
     assigned_subagent: "documentation-engineer"
-    rationale: "Documentation engineer creates README files, user guides, and technical documentation"
+    dependencies: ["Task Group 1", "Task Group 2", "Task Group 3", "Task Group 4", "Task Group 5"]
+    files_modified:
+      - README.md
+      - CHANGELOG.md
+      - .env.example
+
+# Parallel Work Opportunities:
+# - Task Groups 2 and 3 can run simultaneously after Task Group 1 completes
+# - Both depend only on Task Group 1
+# - No interdependencies between them
+# - Different implementers (automation-engineer and backend-engineer)

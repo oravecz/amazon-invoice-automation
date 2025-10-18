@@ -110,4 +110,121 @@ test.describe('Authentication Module', () => {
     const isAuthenticated = await auth.verifyAuthentication(page);
     expect(isAuthenticated).toBe(false);
   });
+
+  // Manual authentication tests
+  test('manualLogin navigates to Amazon.com home page', async ({ page }) => {
+    // Mock Amazon homepage with authenticated state
+    await page.route('https://www.amazon.com/', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <div id="nav-link-accountList">Hello, Test User</div>
+              <a id="nav-orders" href="/orders">Returns & Orders</a>
+            </body>
+          </html>
+        `
+      });
+    });
+
+    await auth.manualLogin(page);
+    expect(page.url()).toContain('amazon.com');
+  });
+
+  test('manualLogin polls for authentication state and resolves when authenticated', async ({ page }) => {
+    let callCount = 0;
+
+    // Mock Amazon homepage - first call returns unauthenticated, second call returns authenticated
+    await page.route('https://www.amazon.com/', async route => {
+      callCount++;
+
+      const body = callCount === 1
+        ? `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <a id="nav-link-accountList" href="/ap/signin">Sign in</a>
+            </body>
+          </html>
+        `
+        : `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <div id="nav-link-accountList">Hello, Test User</div>
+              <a id="nav-orders" href="/orders">Returns & Orders</a>
+            </body>
+          </html>
+        `;
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body
+      });
+    });
+
+    // Set page content to unauthenticated state initially
+    await page.goto('https://www.amazon.com/');
+
+    // After first poll, update to authenticated state
+    setTimeout(async () => {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <div id="nav-link-accountList">Hello, Test User</div>
+            <a id="nav-orders" href="/orders">Returns & Orders</a>
+          </body>
+        </html>
+      `);
+    }, 4000);
+
+    // This should poll, find unauthenticated first, then authenticated
+    await auth.manualLogin(page);
+    expect(page.url()).toContain('amazon.com');
+  });
+
+  test('manualLogin displays console instructions', async ({ page }) => {
+    // Mock Amazon homepage with authenticated state
+    await page.route('https://www.amazon.com/', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <div id="nav-link-accountList">Hello, Test User</div>
+              <a id="nav-orders" href="/orders">Returns & Orders</a>
+            </body>
+          </html>
+        `
+      });
+    });
+
+    // Capture console output
+    const consoleSpy = [];
+    const originalLog = console.log;
+    console.log = (...args) => {
+      consoleSpy.push(args.join(' '));
+      originalLog(...args);
+    };
+
+    try {
+      await auth.manualLogin(page);
+
+      // Verify console output contains key instructions
+      const allOutput = consoleSpy.join('\n');
+      expect(allOutput).toContain('MANUAL AUTHENTICATION REQUIRED');
+      expect(allOutput).toContain('Please complete the following steps:');
+      expect(allOutput).toContain('1. The browser window is now open showing Amazon.com');
+      expect(allOutput).toContain('6. Do NOT close the browser window');
+    } finally {
+      console.log = originalLog;
+    }
+  });
 });
